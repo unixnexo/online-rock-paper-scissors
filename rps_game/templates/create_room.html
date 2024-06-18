@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Online Rock Paper Scissors{% endblock title %}
+{% block body %}
+
+  <main>
+    {% include "top-controls.html" %}
+
+    <h1>Online Rock Paper Scissors</h1>
+    <h2>Play Rock Paper Scissors with a mate, online.</h2>
+
+    <form method="POST">
+      {% csrf_token %}
+      <button type="submit" name="action" value="create_room">Create Room</button>
+    </form>
+
+    <span id="or-span">OR</span>
+
+    <form method="POST">
+      {% csrf_token %}
+      <input type="text" name="room_name" placeholder="Enter Room Name" required>
+      <button type="submit" name="action" value="join_room">Join Room</button>
+    </form>
+  
+    {% if error %}
+    <p id="error-p">{{ error }}</p>
+    <svg id="error-svg" width="200" height="20" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
+      <!-- Created with SVG-edit - https://github.com/SVG-Edit/svgedit-->
+      <g class="layer">
+       <title>Layer 1</title>
+       <path d="m2.8,16.38c0,0 19,-14 107,-7c88,7 88,7 87.2,6.62" fill="none" id="svg_15" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+      </g>
+    </svg>
+    {% endif %}
+
+  </main>
+
+  <img id="bottom-img" src="{% static "img/lg-sc.svg" %}" alt="an svg" />
+
+{% endblock body %}

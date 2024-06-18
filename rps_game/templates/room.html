@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Room {{ room_name }}{% endblock title %}
+{% block body %}
+
+  <main>
+    {% include "top-controls.html" %}
+
+    <p id="intro-p">Send the room name to player 2 to join</p>
+    <div id="copy-room-con">
+      <h3><span id="room-name">{{ room_name }}</span></h3>
+      <div id="img-con">
+        <img id="copy-ic" src="{% static 'img/copy.png' %}" alt="copy room name" />
+      </div>
+    </div>
+
+    <!-- players status -->
+    <div id="players-con">
+
+      <div class="player-con">
+        <img src="{% static "img/player1.png" %}" alt="player 1 svg" />
+        <div class="player-info-con">
+          <p>Player 1</p>
+          <p><span class="online"></span>online</p>
+        </div>
+      </div>
+
+      <div class="player-con">
+        <img src="{% static "img/player2.png" %}" alt="player 2 svg" />
+        <div class="player-info-con">
+          <p>Player 2</p>
+          <p><span class="offline"></span>offline</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- waiting -->
+    <div id="loading-con">
+      <p id="player2-status">Waiting for Player 2 to join</p>
+      <div class="loader"></div>
+    </div>
+
+
+  </main>
+  <img id="bottom-img" src="{% static "img/lg-sc.svg" %}" alt="an svg" />
+
+  <script>
+    const roomName = '{{ room_name }}';
+    function checkRoomStatus() {
+      fetch(`/check_room_status/${roomName}/`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'full') {
+            // Redirect to the game page
+            window.location.href = `/game/${roomName}`;
+          } else if (data.status === 'empty') {
+            document.getElementById('player2-status').innerText = 'Waiting for Player 2 to join';
+          } else {
+            console.log('Room not found or error');
+          }
+        })
+        .catch(error => {
+          console.log('Error fetching room status:', error);
+        });
+    }
+    setInterval(checkRoomStatus, 1000);
+
+  </script>
+
+{% endblock body %}

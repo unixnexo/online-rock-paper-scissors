@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Game has started{% endblock title %}
+{% block body %}
+
+  <main>
+    {% include "top-controls.html" %}
+
+  <h1 id="game-text-h1">Game has started</h1>
+
+  <div id="players-con">
+    <div class="player-con">
+      <img src="{% if player_role == 'player1' %}{% static "img/player1.png" %}{% else %}{% static "img/player2.png" %}{% endif %}" alt="player svg" />
+      <div class="player-info-con">
+        <p>You are {{ player_role }}</p>
+      </div>
+    </div>
+  </div>
+  
+  <div id="choices-con">
+    <p id="player-state">Pick a move</p>
+    <form method="POST" action="{% url "create_room" %}" class="remove-it">
+      {% csrf_token %}
+      <button type="submit" name="action" value="create_room">Create Room</button>
+    </form>
+    <div id="choices-img-con">
+      <img value="rock" onclick="selectMove('rock')" src="{% static "img/rock.webp" %}" role="button" alt="rock image" />
+      <img value="paper" onclick="selectMove('paper')" src="{% static "img/paper.webp" %}" role="button" alt="rock image" />
+      <img value="scissors" onclick="selectMove('scissors')" src="{% static "img/scissors.webp" %}" role="button" alt="rock image" />
+    </div>
+  </div>
+  
+  <!-- tables -->
+   <div id="tables-con">
+      <!-- results -->
+      <div id="results-con">
+        <table>
+          <tr>
+            <th>player 1</th>
+            <td id="player1Wins">0</td>
+          </tr>
+          <tr>
+            <th>player 2</th>
+            <td id="player2Wins">0</td>
+          </tr>
+          <tr>
+            <th>Result</th>  
+            <td id="finalResult"></td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- moves history -->
+      <div id="move-history">
+        <table>
+          <thead>
+            <tr>
+              <th>
+                <img src="{% static "img/player1.png" %}" width="30" alt="player1 svg" />
+              </th>
+              <th>
+                <img src="{% static "img/player2.png" %}" width="30" alt="player2 svg" />
+              </th>
+            </tr>
+          </thead>
+          <tbody id="moves-tbody">
+            <tr>
+              <td>Player 1</td>
+              <td>Player 2</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+   </div>
+
+  <br/><br/><br/>
+
+  </main>
+
+  <script>
+    const roomName = '{{ room_name }}';
+    const choicesElement = ['rock', 'paper', 'scissors'];
+    const playerState = document.getElementById('player-state');
+    const form = document.querySelector('form');
+    const playerName = "{{ player_name }}";
+    const playerRole = "{{ player_role }}";
+
+    // reset ui for next round
+    const container = document.getElementById('choices-img-con');
+    function reset() {
+      container.innerHTML = '';
+
+      const rockImg = `<img value="rock" src="{% static 'img/rock.webp' %}" alt="rock image" role="button" onclick="selectMove('rock')">`;
+      const paperImg = `<img value="paper" src="{% static 'img/paper.webp' %}" alt="paper image" role="button" onclick="selectMove('paper')">`;
+      const scissorsImg = `<img value="scissors" src="{% static 'img/scissors.webp' %}" alt="scissors image" role="button" onclick="selectMove('scissors')">`;
+
+      container.innerHTML = rockImg + paperImg + scissorsImg;
+      playerState.innerText = 'Pick a move';
+    }
+
+    // ui for when game ends
+    const gameEnd = () => {
+      container.remove();
+      playerState.innerText = 'Game is over! To start another one create a new room.';
+      form.classList.remove('remove-it');
+    }
+    
+
+    function selectMove(move) {
+
+      // to eliminate other choices when one is chosen 
+      if (move) {
+        choicesElement.forEach(element => {
+          if (element !== move) {
+            document.querySelector(`img[value=${element}]`).remove();
+          } else {
+            document.querySelector(`img[value=${move}]`).removeAttribute('onclick');
+          }
+        });
+        playerState.innerText = 'You picked';
+      }
+
+
+      fetch('/save_move/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ move: move, room_name: roomName })
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Move saved successfully:', data);
+        checkResult();
+      })
+      .catch(error => {
+        console.error('Error saving move:', error);
+      });
+    }
+
+    const createMoveImg = (move) => {
+      const img = document.createElement('img');
+      img.src = `{% static "img/" %}${move}.webp`;
+      img.alt = move;
+      img.width = 30;
+      return img;
+    };
+
+    const updateMovesTable = (lastMove) => {
+      const movesTbody = document.getElementById('moves-tbody');
+      const newRow = document.createElement('tr');
+      const player1MoveCell = document.createElement('td');
+      const player2MoveCell = document.createElement('td');
+
+      if (lastMove[0]?.player === playerName) {
+        if (playerRole === 'player1') {
+          player1MoveCell.appendChild(createMoveImg(lastMove[0]?.move));
+          player2MoveCell.appendChild(createMoveImg(lastMove[1]?.move));
+        } else {
+          player2MoveCell.appendChild(createMoveImg(lastMove[0]?.move));
+          player1MoveCell.appendChild(createMoveImg(lastMove[1]?.move));
+        }
+      } else {
+        if (playerRole === 'player1') {
+          player1MoveCell.appendChild(createMoveImg(lastMove[1]?.move));
+          player2MoveCell.appendChild(createMoveImg(lastMove[0]?.move));
+        } else {
+          player2MoveCell.appendChild(createMoveImg(lastMove[1]?.move));
+          player1MoveCell.appendChild(createMoveImg(lastMove[0]?.move));
+        }
+      }
+
+      newRow.appendChild(player1MoveCell);
+      newRow.appendChild(player2MoveCell);
+
+      // Insert the new row at the top of the table body
+              if (movesTbody.firstChild) {
+        movesTbody.insertBefore(newRow, movesTbody.firstChild);
+      } else {
+        movesTbody.appendChild(newRow);
+      }
+    }
+
+    let checker = 0;
+    let lastRoundResult = null;
+    let timeoutId = null;
+    function checkResult() {
+      fetch(`/get_result/${roomName}/`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
+        .then(data => {
+          document.getElementById('player1Wins').innerText = data.player1_wins > 1 ? `${data.player1_wins} wins` : `${data.player1_wins} win`;
+          document.getElementById('player2Wins').innerText = data.player2_wins > 1 ? `${data.player2_wins} wins` : `${data.player2_wins} win`;
+
+          const lastMove = data.last_move;
+
+          if (data.result && checker === 0) {
+            checker = 1;
+            updateMovesTable(lastMove);
+            document.getElementById('finalResult').innerText = `${data.result} wins`;
+            document.querySelector('h1').innerText = `${data.result} wins`;
+            gameEnd();
+            clearTimeout(timeoutId);
+          } else if (checker === 0) {
+            // if both moves are made, reset ui
+            if (data.round_result && data.round_result !== lastRoundResult) {
+              lastRoundResult = data.round_result;
+              console.log(`Round result: ${data.round_result.split('_')[0]}`);
+
+              updateMovesTable(lastMove);
+
+              reset();  // Call reset after each round
+            }
+
+            timeoutId = setTimeout(checkResult, 2000);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching result:', error)
+        });
+    }
+
+    checkResult();
+  </script>
+
+  <!-- auto animation formkit library -->
+  <script type="module">
+    import autoAnimate from '/static/js/auto-animate-formkit.js'
+    document.addEventListener('DOMContentLoaded', () => {
+        autoAnimate(document.getElementById('choices-img-con'))
+        autoAnimate(document.getElementById('moves-tbody'))
+    })
+  </script>
+  
+{% endblock body %}
